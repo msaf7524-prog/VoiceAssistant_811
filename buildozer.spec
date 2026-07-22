@@ -31,6 +31,7 @@ android.minapi = 21
 
 # تشغيل الشاشة الكاملة
 fullscreen = 0
+orientation = portrait
 
 [buildozer]
 

@@ -22,7 +22,8 @@ version = 0.1
 requirements = python3,kivy
 
 # الأذونات المطلوبة (الميكروفون، الإنترنيت، والبلوتوث)
-android.permissions = INTERNET,RECORD_AUDIO,BLUETOOTH,BLUETOOTH_ADMIN,BLUETOOTH_CONNECT
+android.permissions = INTERNET, RECORD_AUDIO, BLUETOOTH, BLUETOOTH_ADMIN, BLUETOOTH_CONNECT, MODIFY_AUDIO_SETTINGS
+
 
 # مستويات API لأندرويد
 android.api = 33

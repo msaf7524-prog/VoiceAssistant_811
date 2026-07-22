@@ -19,7 +19,7 @@ source.include_exts = py,png,jpg,kv,atlas
 version = 0.1
 
 # المكتبات البرمجية المطلوبة
-requirements = python3,kivy
+requirements = python3,kivy,requests,urllib3,certifi,charset_normalizer,idna
 
 # الأذونات المطلوبة (الميكروفون، الإنترنيت، والبلوتوث)
 android.permissions = INTERNET, RECORD_AUDIO, BLUETOOTH, BLUETOOTH_ADMIN, BLUETOOTH_CONNECT, MODIFY_AUDIO_SETTINGS

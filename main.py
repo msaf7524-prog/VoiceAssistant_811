@@ -41,7 +41,7 @@ class MainScreen(Screen):
             color=(0.8, 0.8, 0.8, 1)
         )
         settings_btn = Button(
-            text="⚙️ الإعدادات",
+            text="⚙️ Settings",
             size_hint_x=0.35,
             background_color=(0.2, 0.6, 0.9, 1)
         )
@@ -71,7 +71,7 @@ class MainScreen(Screen):
         # --- سجل المحادثة النصي ---
         log_layout = BoxLayout(orientation='vertical', size_hint_y=0.3)
         self.log_label = Label(
-            text="You: --\n811: بانتظار نداءك الصوتي...",
+            text="You: --\n811: Listening for your voice command...",
             font_size='15sp',
             halign='center',
             color=(0.9, 0.9, 0.9, 1)
@@ -105,8 +105,8 @@ class SettingsScreen(Screen):
         
         # العنوان
         header = Label(
-            text="⚙️ إعدادات المساعد الصوتي",
-            font_size='22sp',
+            text="⚙️ Voice Assistant Settings",
+            font_size='20sp',
             bold=True,
             size_hint_y=0.15
         )
@@ -114,7 +114,7 @@ class SettingsScreen(Screen):
         
         # التحكم بحساسية الميكروفون
         mic_box = BoxLayout(orientation='vertical', size_hint_y=0.3, spacing=5)
-        self.mic_value_label = Label(text="حساسية الميكروفون (Threshold): 70%", font_size='16sp')
+        self.mic_value_label = Label(text="Mic Sensitivity (Threshold): 70%", font_size='15sp')
         self.mic_slider = Slider(min=10, max=100, value=70)
         self.mic_slider.bind(value=self.on_mic_sensitivity_change)
         
@@ -124,7 +124,7 @@ class SettingsScreen(Screen):
         
         # التحكم بتوجيه الصوت لبلوتوث SCO
         bt_box = BoxLayout(orientation='horizontal', size_hint_y=0.2, spacing=10)
-        bt_label = Label(text="توجيه الصوت للسماعة (Bluetooth SCO):", font_size='15sp')
+        bt_label = Label(text="Route Audio to Headset (Bluetooth SCO):", font_size='13sp')
         self.bt_switch = Switch(active=True)
         
         bt_box.add_widget(bt_label)
@@ -133,7 +133,7 @@ class SettingsScreen(Screen):
         
         # زر العودة
         back_btn = Button(
-            text="حفظ والعودة للرئيسية ↩️",
+            text="Save & Return ↩️",
             size_hint_y=0.15,
             background_color=(0.1, 0.8, 0.4, 1)
         )
@@ -143,7 +143,7 @@ class SettingsScreen(Screen):
         self.add_widget(layout)
 
     def on_mic_sensitivity_change(self, instance, value):
-        self.mic_value_label.text = f"حساسية الميكروفون (Threshold): {int(value)}%"
+        self.mic_value_label.text = f"Mic Sensitivity (Threshold): {int(value)}%"
 
     def go_back(self, instance):
         self.manager.transition = SlideTransition(direction='right')

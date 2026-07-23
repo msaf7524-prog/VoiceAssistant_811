@@ -13,13 +13,13 @@ package.domain = org.test
 source.dir = .
 
 # امتدادات الملفات المطلوبة
-source.include_exts = py,png,jpg,kv,atlas
+source.include_exts = py,png,jpg,kv,atlas,ttf
 
 # إصدار التطبيق
 version = 0.1
 
 # المكتبات البرمجية المطلوبة
-requirements = python3,kivy,requests,urllib3,certifi,charset_normalizer,idna
+requirements = python3,kivy,requests,urllib3,certifi,charset_normalizer,idna,arabic_reshaper,python-bidi
 
 # الأذونات المطلوبة (الميكروفون، الإنترنيت، والبلوتوث)
 android.permissions = INTERNET, RECORD_AUDIO, BLUETOOTH, BLUETOOTH_ADMIN, BLUETOOTH_CONNECT, MODIFY_AUDIO_SETTINGS

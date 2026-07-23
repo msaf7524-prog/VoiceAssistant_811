@@ -29,7 +29,7 @@ jobs:
         export DEBIAN_FRONTEND=noninteractive
         sudo apt-get update
         sudo apt-get install -y build-essential git ffmpeg libssl-dev libffi-dev \
-          libsqlite3-dev zeromq3-dev zip unzip autoconf libtool pkg-config \
+          libsqlite3-dev libzmq3-dev zip unzip autoconf libtool pkg-config \
           zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake
         pip install --upgrade pip
         pip install "cython<3.0.0" buildozer virtualenv

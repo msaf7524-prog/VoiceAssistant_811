@@ -24,7 +24,7 @@ except ImportError:
 FONT_PATH = "arabic_font.ttf"
 
 def download_arabic_font():
-    """تنزيل خط عربي تلقائياً لدعم الحروف العربية بدون مربعات"""
+    """تنزيل خط عربي تلقائياً لدعم الحروف العربية"""
     if not os.path.exists(FONT_PATH):
         try:
             url = "https://raw.githubusercontent.com/google/fonts/main/ofl/amiri/Amiri-Regular.ttf"
@@ -109,13 +109,12 @@ class MainScreen(Screen):
         indicator_layout.add_widget(self.circle_widget)
         main_layout.add_widget(indicator_layout)
         
-        # سجل التفاعل مع دعم الخط العربي
+        # سجل التفاعل
         log_layout = BoxLayout(orientation='vertical', size_hint_y=0.3)
-        
         font_arg = FONT_PATH if os.path.exists(FONT_PATH) else 'Roboto'
         self.log_label = Label(
             text=fix_ar("You: --\n811: بانتظار الأوامر الصوتية..."),
-            font_size='16sp',
+            font_size='15sp',
             font_name=font_arg,
             halign='center',
             color=(0.9, 0.9, 0.9, 1)
@@ -123,7 +122,7 @@ class MainScreen(Screen):
         log_layout.add_widget(self.log_label)
         main_layout.add_widget(log_layout)
         
-        # زر الاختبار
+        # زر التجربة
         self.speak_btn = Button(
             text="Tap to Speak (Test 811)",
             size_hint_y=0.15,
@@ -176,7 +175,7 @@ class SettingsScreen(Screen):
         
         layout.add_widget(Label(text="Gemini API Key:", font_size='14sp', size_hint_y=0.05))
         self.api_input = TextInput(
-            hint_text="Paste your Gemini API Key here",
+            hint_text="Paste AIzaSy... key here",
             multiline=False,
             size_hint_y=0.12
         )
@@ -224,7 +223,6 @@ class VoiceAssistantApp(App):
     tts_engine = None
 
     def build(self):
-        # تحميل الخط العربي في الخلفية
         threading.Thread(target=download_arabic_font).start()
         self.init_tts()
         
@@ -250,31 +248,37 @@ class VoiceAssistantApp(App):
                 print(f"TTS Speak Error: {e}")
 
     def query_gemini(self, prompt, callback):
-        if not self.api_key:
+        clean_key = self.api_key.strip()
+        if not clean_key:
             reply = "يا عيني افتح الإعدادات وانسخ الـ API Key حتى أقدر أجاوبك!"
             callback(reply)
             self.speak(reply)
             return
 
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={self.api_key}"
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={clean_key}"
         headers = {'Content-Type': 'application/json'}
         
-        system_instruction = "أنت المساعد الصوتي 811. أجب باختصار ووضوح وبطريقة ودودة باللهجة العراقية."
-        full_prompt = f"{system_instruction}\n\nالمستخدم يقول: {prompt}"
+        system_instruction = "أنت المساعد الصوتي 811. أجب باختصار شديد ووضوح وبطريقة ودودة باللهجة العراقية."
         
         data = {
-            "contents": [{"parts": [{"text": full_prompt}]}]
+            "contents": [
+                {
+                    "parts": [
+                        {"text": f"{system_instruction}\n\nالمستخدم يقول: {prompt}"}
+                    ]
+                }
+            ]
         }
 
         try:
-            res = requests.post(url, json=data, headers=headers, timeout=10)
+            res = requests.post(url, json=data, headers=headers, timeout=12)
             if res.status_code == 200:
                 result = res.json()
                 reply = result['candidates'][0]['content']['parts'][0]['text']
             else:
-                reply = "صار عندي خطأ بالاتصال، تأكد من الـ API Key."
+                reply = f"خطأ في الاتصال ({res.status_code})، تأكد من مفتاح API Key."
         except Exception as e:
-            reply = "اكو مشكلة بالإنترنت يا طيب."
+            reply = "اكو مشكلة بالإنترنت، تأكد من الاتصال."
 
         callback(reply)
         self.speak(reply)

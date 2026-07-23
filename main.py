@@ -113,7 +113,7 @@ class MainScreen(Screen):
         log_layout = BoxLayout(orientation='vertical', size_hint_y=0.3)
         font_arg = FONT_PATH if os.path.exists(FONT_PATH) else 'Roboto'
         self.log_label = Label(
-            text=fix_ar("You: --\n811: بانتظار الأوامر الصوتية..."),
+            text=fix_ar("أنت: --\n811: بانتظار الأوامر الصوتية..."),
             font_size='15sp',
             font_name=font_arg,
             halign='center',
@@ -175,7 +175,7 @@ class SettingsScreen(Screen):
         
         layout.add_widget(Label(text="Gemini API Key:", font_size='14sp', size_hint_y=0.05))
         self.api_input = TextInput(
-            hint_text="Paste AIzaSy... key here",
+            hint_text="Paste your API key here",
             multiline=False,
             size_hint_y=0.12
         )
@@ -255,16 +255,17 @@ class VoiceAssistantApp(App):
             self.speak(reply)
             return
 
+        # استخدام الموديل المستقر gemini-1.5-flash
         url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={clean_key}"
         headers = {'Content-Type': 'application/json'}
         
-        system_instruction = "أنت المساعد الصوتي 811. أجب باختصار شديد ووضوح وبطريقة ودودة باللهجة العراقية."
+        system_instruction = "أنت مساعد صوتي ذكي باسم 811، أجب بأسلوب قصير ومختصر جداً وباللهجة العراقية."
         
         data = {
             "contents": [
                 {
                     "parts": [
-                        {"text": f"{system_instruction}\n\nالمستخدم يقول: {prompt}"}
+                        {"text": f"{system_instruction}\nالمستخدم يقول: {prompt}"}
                     ]
                 }
             ]
@@ -276,9 +277,9 @@ class VoiceAssistantApp(App):
                 result = res.json()
                 reply = result['candidates'][0]['content']['parts'][0]['text']
             else:
-                reply = f"خطأ في الاتصال ({res.status_code})، تأكد من مفتاح API Key."
+                reply = f"خطأ في الاتصال ({res.status_code})، تأكد من مفتاح الـ API Key."
         except Exception as e:
-            reply = "اكو مشكلة بالإنترنت، تأكد من الاتصال."
+            reply = "مشكلة بالإنترنت، تأكد من الاتصال."
 
         callback(reply)
         self.speak(reply)

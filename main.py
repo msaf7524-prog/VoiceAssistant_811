@@ -255,7 +255,7 @@ class VoiceAssistantApp(App):
             self.speak(reply)
             return
 
-        # استخدام الموديل المستقر gemini-1.5-flash
+        # رابط الموديل المعتمد والمستقر gemini-1.5-flash
         url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={clean_key}"
         headers = {'Content-Type': 'application/json'}
         

@@ -2,7 +2,6 @@
 # مشروع المساعد الشخصي الذكي (VoiceAssistant_811)
 # ملف main.py - متوافق مع مفاتيح Google AI Studio المجانية
 # =========================================================
-
 import os
 import threading
 import traceback

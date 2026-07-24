@@ -1,6 +1,6 @@
 # =========================================================
 # مشروع المساعد الشخصي الذكي (VoiceAssistant_811)
-# ملف main.py - النسخة الآمنة المعتمدة للرفع على GitHub
+# ملف main.py - دعم مفاتيح Google AI Studio الجديدة (AQ.xxx)
 # =========================================================
 
 import os
@@ -20,16 +20,15 @@ from kivy.uix.button import Button
 from kivy.uix.slider import Slider
 from kivy.uix.switch import Switch
 from kivy.uix.widget import Widget
+from kivy.uix.scrollview import ScrollView
 from kivy.graphics import Color, Ellipse
 
-# ---------------------------------------------------------
-# المتغير الإفتراضي آمن (فارغ) لمنع حظر الحفظ على GitHub
-# ---------------------------------------------------------
+# ترك المفتاح الافتراضي فارغاً لحماية مستودع GitHub
 DEFAULT_API_KEY = ""
 FONT_PATH = "arabic_font.ttf"
 
 def download_arabic_font():
-    """تحميل خط عربي مجاني لتنسيق واجهة التطبيق"""
+    """تحميل خط عربي لتنسيق النصوص داخل التطبيق"""
     if not os.path.exists(FONT_PATH):
         try:
             url = "https://raw.githubusercontent.com/google/fonts/main/ofl/amiri/Amiri-Regular.ttf"
@@ -48,7 +47,7 @@ except ImportError:
     HAS_ARABIC = False
 
 def fix_ar(text):
-    """معالجة اتجاه النصوص العربية وترتيب الأحرف"""
+    """ضبط اتجاه وتشبيك الحروف العربية"""
     if not text:
         return ""
     if HAS_ARABIC:
@@ -60,7 +59,7 @@ def fix_ar(text):
     return text
 
 # ---------------------------------------------------------
-# الواجهة الرئيسية (MainScreen)
+# 1. الواجهة الرئيسية (MainScreen)
 # ---------------------------------------------------------
 class MainScreen(Screen):
     def __init__(self, **kwargs):
@@ -71,13 +70,19 @@ class MainScreen(Screen):
         # الشريط العلوي
         top_bar = BoxLayout(orientation='horizontal', size_hint_y=0.1)
         self.status_label = Label(text="BT: Connected | Mic: Ready", font_size='14sp', color=(0.8, 0.8, 0.8, 1))
-        settings_btn = Button(text="Settings", size_hint_x=0.35, background_color=(0.2, 0.6, 0.9, 1))
+        
+        gen_btn = Button(text="App Builder", size_hint_x=0.3, background_color=(0.5, 0.3, 0.8, 1))
+        gen_btn.bind(on_release=self.go_to_builder)
+        
+        settings_btn = Button(text="Settings", size_hint_x=0.3, background_color=(0.2, 0.6, 0.9, 1))
         settings_btn.bind(on_release=self.go_to_settings)
+        
         top_bar.add_widget(self.status_label)
+        top_bar.add_widget(gen_btn)
         top_bar.add_widget(settings_btn)
         main_layout.add_widget(top_bar)
         
-        # مؤشر الحالة
+        # مؤشر حالة المساعد
         indicator_layout = BoxLayout(orientation='vertical', size_hint_y=0.45)
         self.state_label = Label(text="811 Assistant Active\nWaiting for '811'...", font_size='18sp', halign='center', bold=True)
         self.circle_widget = Widget(size_hint=(1, 1))
@@ -86,14 +91,14 @@ class MainScreen(Screen):
         indicator_layout.add_widget(self.circle_widget)
         main_layout.add_widget(indicator_layout)
         
-        # عرض ردود المساعد
+        # عرض الردود
         log_layout = BoxLayout(orientation='vertical', size_hint_y=0.3)
         font_arg = FONT_PATH if os.path.exists(FONT_PATH) else "Roboto"
         self.log_label = Label(text=fix_ar("...أنت: «811» بانتظار الأوامر الصوتية"), font_size='15sp', font_name=font_arg, halign='center', color=(0.9, 0.9, 0.9, 1))
         log_layout.add_widget(self.log_label)
         main_layout.add_widget(log_layout)
         
-        # زر اختبار المساعد الصوتية
+        # زر التحديث والتجربة
         self.speak_btn = Button(text="Tap to Speak (Test 811)", size_hint_y=0.15, background_color=(0.1, 0.7, 0.4, 1))
         self.speak_btn.bind(on_release=self.simulate_listening)
         main_layout.add_widget(self.speak_btn)
@@ -113,6 +118,10 @@ class MainScreen(Screen):
         self.manager.transition = SlideTransition(direction='left')
         self.manager.current = 'settings'
 
+    def go_to_builder(self, instance):
+        self.manager.transition = SlideTransition(direction='left')
+        self.manager.current = 'builder'
+
     def simulate_listening(self, instance):
         app = App.get_running_app()
         user_query = "هلا 811، ما هي أحدث الأخبار اليوم؟"
@@ -121,7 +130,7 @@ class MainScreen(Screen):
         self.log_label.font_name = font_arg
         self.log_label.text = fix_ar(f"أنت: {user_query}\n\n811: جاري التفكير...")
         
-        threading.Thread(target=app.query_gemini, args=(user_query, self.update_ai_response), daemon=True).start()
+        threading.Thread(target=app.query_gemini, args=(user_query, self.update_ai_response, False), daemon=True).start()
 
     def update_ai_response(self, response_text):
         Clock.schedule_once(lambda dt: self._set_log_text(response_text))
@@ -132,7 +141,61 @@ class MainScreen(Screen):
         self.log_label.text = fix_ar(f"811: {text}")
 
 # ---------------------------------------------------------
-# شاشة الإعدادات (SettingsScreen)
+# 2. شاشة مولد التطبيقات (AppBuilderScreen)
+# ---------------------------------------------------------
+class AppBuilderScreen(Screen):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        
+        layout = BoxLayout(orientation='vertical', padding=15, spacing=10)
+        layout.add_widget(Label(text="AI App Builder (Gemini)", font_size='20sp', bold=True, size_hint_y=0.08))
+        
+        self.desc_input = TextInput(hint_text="صف تطبيقك هنا...", multiline=True, size_hint_y=0.2)
+        layout.add_widget(self.desc_input)
+        
+        generate_btn = Button(text="Generate Code", size_hint_y=0.1, background_color=(0.5, 0.3, 0.8, 1))
+        generate_btn.bind(on_release=self.start_generation)
+        layout.add_widget(generate_btn)
+        
+        scroll = ScrollView(size_hint_y=0.52)
+        font_arg = FONT_PATH if os.path.exists(FONT_PATH) else "Roboto"
+        self.code_output = Label(text="الكود البرمجي المولد سيظهر هنا...", font_name=font_arg, size_hint_y=None, halign='left', valign='top')
+        self.code_output.bind(texture_size=self.code_output.setter('size'))
+        scroll.add_widget(self.code_output)
+        layout.add_widget(scroll)
+        
+        back_btn = Button(text="Back to Main", size_hint_y=0.1, background_color=(0.3, 0.3, 0.3, 1))
+        back_btn.bind(on_release=self.go_back)
+        layout.add_widget(back_btn)
+        
+        self.add_widget(layout)
+
+    def start_generation(self, instance):
+        prompt_text = self.desc_input.text.strip()
+        if not prompt_text:
+            self.code_output.text = "الرجاء كتابة وصف للتطبيق أولاً."
+            return
+        
+        self.code_output.text = "جاري توليد الكود البرمجي بواسطة Gemini..."
+        app = App.get_running_app()
+        
+        builder_prompt = f"قم بكتابة كود Python كامل وموضح بالتفصيل لبناء التطبيق التالي: {prompt_text}"
+        threading.Thread(target=app.query_gemini, args=(builder_prompt, self.show_generated_code, True), daemon=True).start()
+
+    def show_generated_code(self, result_text):
+        Clock.schedule_once(lambda dt: self._set_code_text(result_text))
+
+    def _set_code_text(self, text):
+        font_arg = FONT_PATH if os.path.exists(FONT_PATH) else "Roboto"
+        self.code_output.font_name = font_arg
+        self.code_output.text = fix_ar(text)
+
+    def go_back(self, instance):
+        self.manager.transition = SlideTransition(direction='right')
+        self.manager.current = 'main'
+
+# ---------------------------------------------------------
+# 3. شاشة الإعدادات (SettingsScreen)
 # ---------------------------------------------------------
 class SettingsScreen(Screen):
     def __init__(self, **kwargs):
@@ -142,19 +205,16 @@ class SettingsScreen(Screen):
         
         layout.add_widget(Label(text="Settings", font_size='20sp', bold=True, size_hint_y=0.1))
         
-        # حقل إدخال المفتاح
-        layout.add_widget(Label(text="Gemini API Key:", font_size='13sp', size_hint_y=0.06))
+        layout.add_widget(Label(text="Gemini API Key (Paste your AQ.xxx key here):", font_size='13sp', size_hint_y=0.06))
         self.api_input = TextInput(hint_text="Paste your API key here", multiline=False, size_hint_y=0.1)
         layout.add_widget(self.api_input)
         
-        # خيار البحث الحي عبر جوجل
         search_box = BoxLayout(orientation='horizontal', size_hint_y=0.12)
         search_box.add_widget(Label(text="Google Search (Live Info):", font_size='13sp'))
         self.search_switch = Switch(active=True)
         search_box.add_widget(self.search_switch)
         layout.add_widget(search_box)
         
-        # شريط التحكم بدرجة الحرارة
         temp_box = BoxLayout(orientation='vertical', size_hint_y=0.18, spacing=2)
         self.temp_label = Label(text="Temperature (Creativity): 1.0", font_size='13sp')
         self.temp_slider = Slider(min=0.0, max=2.0, value=1.0, step=0.1)
@@ -163,7 +223,6 @@ class SettingsScreen(Screen):
         temp_box.add_widget(self.temp_slider)
         layout.add_widget(temp_box)
         
-        # زر الحفظ والعودة
         back_btn = Button(text="Save and Return", size_hint_y=0.12, background_color=(0.1, 0.8, 0.4, 1))
         back_btn.bind(on_release=self.go_back)
         layout.add_widget(back_btn)
@@ -191,7 +250,7 @@ class SettingsScreen(Screen):
         self.manager.current = 'main'
 
 # ---------------------------------------------------------
-# التطبيق الرئيسي وإدارة البيانات
+# 4. التطبيق الرئيسي وإدارة الاتصال
 # ---------------------------------------------------------
 class VoiceAssistantApp(App):
     api_key = DEFAULT_API_KEY
@@ -216,6 +275,7 @@ class VoiceAssistantApp(App):
         sm = ScreenManager()
         sm.add_widget(MainScreen(name='main'))
         sm.add_widget(SettingsScreen(name='settings'))
+        sm.add_widget(AppBuilderScreen(name='builder'))
         return sm
 
     def save_settings(self, key_text, use_search, temp):
@@ -228,22 +288,26 @@ class VoiceAssistantApp(App):
                        use_search=self.use_google_search, 
                        temperature=self.temperature)
 
-    def query_gemini(self, prompt, callback):
+    def query_gemini(self, prompt, callback, is_builder=False):
+        """
+        تقبل هذه الدالة المفتاح بشكل مباشر وتام (مهما كانت بدايته AQ. أو غيرها)
+        """
         clean_key = self.api_key.strip()
         
         if not clean_key:
-            reply = "الرجاء الانتقال للإعدادات وإدخال مفتاح الـ API الخاص بك."
+            reply = "الرجاء الانتقال للإعدادات وإلصاق مفتاح الـ API الخاص بك."
             callback(reply)
             return
 
+        # استخدام الرابط المباشر وإرفاق المفتاح كما هو
         url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={clean_key}"
         headers = {'Content-Type': 'application/json'}
         
+        sys_instruction = "أنت خبير برمجي محترف. قم بتوليد كود كامل وموثق بالتفصيل." if is_builder else "أنت مساعد ذكي اسمك 811. أجب باختصار ووضوح وبلهجة عربية لطيفة."
+
         data = {
             "system_instruction": {
-                "parts": [
-                    {"text": "أنت مساعد ذكي اسمك 811. أجب باختصار ووضوح وبلهجة عربية لطيفة."}
-                ]
+                "parts": [{"text": sys_instruction}]
             },
             "contents": [
                 {
@@ -255,16 +319,16 @@ class VoiceAssistantApp(App):
             }
         }
         
-        if self.use_google_search:
+        if self.use_google_search and not is_builder:
             data["tools"] = [{"google_search": {}}]
         
         try:
-            res = requests.post(url, json=data, headers=headers, timeout=20)
+            res = requests.post(url, json=data, headers=headers, timeout=25)
             if res.status_code == 200:
                 result = res.json()
                 reply = result['candidates'][0]['content']['parts'][0]['text']
             else:
-                reply = f"خطأ في الاتصال بالخدمة ({res.status_code})"
+                reply = f"خطأ في الاتصال بالخدمة ({res.status_code}). تأكد من إدخال المفتاح بشكل صحيح."
         except Exception:
             reply = "حدث خطأ في الاتصال بالشبكة."
 
@@ -276,4 +340,3 @@ if __name__ == '__main__':
     except Exception as e:
         print("Error details:", e)
         traceback.print_exc()
-    

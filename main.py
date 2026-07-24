@@ -1,6 +1,6 @@
 # =========================================================
 # مشروع المساعد الشخصي الذكي (VoiceAssistant_811)
-# ملف main.py المتوافق كاملاً مع ملفات buildozer.spec و build.yml
+# ملف main.py - معدّل ومصلح بالكامل للاتصال المباشر
 # =========================================================
 
 import os
@@ -65,7 +65,7 @@ if platform == "android":
         from jnius import autoclass
         from android.permissions import request_permissions, Permission
         
-        # طلب الأذونات المطلوبة المحددة في buildozer.spec
+        # طلب الأذونات المطلوبة
         request_permissions([
             Permission.RECORD_AUDIO,
             Permission.BLUETOOTH,
@@ -172,10 +172,13 @@ class MainScreen(Screen):
         threading.Thread(target=app.query_gemini, args=(user_query, self.update_ai_response), daemon=True).start()
 
     def update_ai_response(self, response_text):
-        """تحديث نص الاستجابة في الواجهة"""
+        """تحديث نص الاستجابة في الواجهة عبر Main Thread"""
+        Clock.schedule_once(lambda dt: self._set_log_text(response_text))
+
+    def _set_log_text(self, text):
         font_arg = FONT_PATH if os.path.exists(FONT_PATH) else "Roboto"
         self.log_label.font_name = font_arg
-        self.log_label.text = fix_ar(f"811: {response_text}")
+        self.log_label.text = fix_ar(f"811: {text}")
 
 # ---------------------------------------------------------
 # الجزء الرابع: شاشة الإعدادات (SettingsScreen)
@@ -190,7 +193,7 @@ class SettingsScreen(Screen):
         header = Label(text="Settings", font_size='22sp', bold=True, size_hint_y=0.1)
         layout.add_widget(header)
         
-        # أدخال API Key
+        # إدخال API Key
         layout.add_widget(Label(text="Gemini API Key:", font_size='14sp', size_hint_y=0.08))
         self.api_input = TextInput(
             hint_text="Paste your API key here",
@@ -237,15 +240,14 @@ class SettingsScreen(Screen):
         self.manager.current = 'main'
 
 # ---------------------------------------------------------
-# الجزء الخامس: الكلاس الرئيسي الموحد للتطبيق (VoiceAssistantApp)
+# الجزء الخامس: الكلاس الرئيسي (VoiceAssistantApp)
 # ---------------------------------------------------------
 class VoiceAssistantApp(App):
-    """الكلاس الموحد الجامع لجميع دوال التطبيق والـ API دون تكرار"""
+    """الكلاس الرئيسي الجامع للتطبيق ومعالجة الطلبات الخارجية"""
     api_key = ""
     tts_engine = None
 
     def build(self):
-        # تحميل الخط العربي في الخلفية
         threading.Thread(target=download_arabic_font, daemon=True).start()
         self.init_tts()
         
@@ -255,7 +257,7 @@ class VoiceAssistantApp(App):
         return sm
 
     def init_tts(self):
-        """تهيئة محرك النطق في نظام أندرويد"""
+        """تهيئة محرك النطق أندرويد"""
         if platform == 'android':
             try:
                 activity = PythonActivity.mActivity
@@ -273,7 +275,7 @@ class VoiceAssistantApp(App):
                 print(f"TTS Speak Error: {e}")
 
     def query_gemini(self, prompt, callback):
-        """إرسال الاستفسارات لنظام Gemini API ومعالجة الاستجابة"""
+        """إرسال الاستفسارات لنظام Gemini API بطريقة آمنة ومعالجة حوادث الاتصال"""
         clean_key = self.api_key.strip()
         if not clean_key:
             reply = "احجي أقدر أجاوبك يا عيني، ادخل الإعدادات والزق الـ API Key"
@@ -281,17 +283,21 @@ class VoiceAssistantApp(App):
             self.speak(reply)
             return
 
-        # رابط نموذج Gemini
+        # العنوان المباشر للاتصال
         url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={clean_key}"
-        headers = {'Content-Type': 'application/json'}
         
-        system_instruction = "باسم 811، أجب بأسلوب قصير جداً ومختصر جداً وباللهجة العراقية."
+        headers = {
+            'Content-Type': 'application/json',
+            'X-Goog-Api-Key': clean_key
+        }
         
         data = {
             "contents": [
                 {
                     "parts": [
-                        {"text": f"{system_instruction}\nالمستخدم يقول: {prompt}"}
+                        {
+                            "text": f"أنت مساعد اسمك 811. أجب باختصار شديد وباللهجة العراقية.\nسؤال المستخدم: {prompt}"
+                        }
                     ]
                 }
             ]
@@ -303,7 +309,7 @@ class VoiceAssistantApp(App):
                 result = res.json()
                 reply = result['candidates'][0]['content']['parts'][0]['text']
             else:
-                reply = f"A خطأ في الاتصال ({res.status_code}) تأكد من مفتاح الـ API"
+                reply = f"خطأ في الاتصال ({res.status_code}) تأكد من مفتاح الـ API"
         except Exception as e:
             reply = "مشكلة بالإنترنت، تأكد من الاتصال"
         
@@ -311,7 +317,7 @@ class VoiceAssistantApp(App):
         self.speak(reply)
 
 # ---------------------------------------------------------
-# الجزء السادس: نقطة التشغيل الرئيسية الخالية من الأخطاء
+# الجزء السادس: تشغيل التطبيق
 # ---------------------------------------------------------
 if __name__ == '__main__':
     try:
@@ -320,4 +326,4 @@ if __name__ == '__main__':
         print("Application Crash:")
         print("Error details:", e)
         traceback.print_exc()
-        
+            

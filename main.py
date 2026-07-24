@@ -1,6 +1,6 @@
 # =========================================================
 # مشروع المساعد الشخصي الذكي (VoiceAssistant_811)
-# ملف main.py - معدّل ومصلح بالكامل للاتصال المباشر
+# ملف main.py - متوافق مع مفاتيح Google AI Studio المجانية
 # =========================================================
 
 import os
@@ -22,12 +22,12 @@ from kivy.uix.widget import Widget
 from kivy.graphics import Color, Ellipse
 
 # ---------------------------------------------------------
-# الجزء الأول: معالجة خطوط النصوص العربية وتشكيلها
+# 1. إعداد الخطوط العربية وتنسيقها
 # ---------------------------------------------------------
 FONT_PATH = "arabic_font.ttf"
 
 def download_arabic_font():
-    """تحميل خط عربي يدعم التشكيل والعرض الصحيح في Kivy"""
+    """تحميل خط عربي لضمان ظهور الأحرف بشكل صحيح"""
     if not os.path.exists(FONT_PATH):
         try:
             url = "https://raw.githubusercontent.com/google/fonts/main/ofl/amiri/Amiri-Regular.ttf"
@@ -46,7 +46,7 @@ except ImportError:
     HAS_ARABIC = False
 
 def fix_ar(text):
-    """دالة تحسين وتنسيق اتجاه النص العربي"""
+    """تعديل اتجاه وشكل النصوص العربية"""
     if not text:
         return ""
     if HAS_ARABIC:
@@ -58,14 +58,13 @@ def fix_ar(text):
     return text
 
 # ---------------------------------------------------------
-# الجزء الثاني: إعدادات مكتبات أندرويد الصوتية (Android Native)
+# 2. أذونات نظام أندرويد
 # ---------------------------------------------------------
 if platform == "android":
     try:
         from jnius import autoclass
         from android.permissions import request_permissions, Permission
         
-        # طلب الأذونات المطلوبة
         request_permissions([
             Permission.RECORD_AUDIO,
             Permission.BLUETOOTH,
@@ -80,10 +79,9 @@ if platform == "android":
         print(f"Android Native Error: {e}")
 
 # ---------------------------------------------------------
-# الجزء الثالث: الشاشة الرئيسية (MainScreen)
+# 3. الواجهة الرئيسية (MainScreen)
 # ---------------------------------------------------------
 class MainScreen(Screen):
-    """الشاشة الرئيسية المجهزة بدائرة التفاعل وسجل الرسائل"""
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         
@@ -107,7 +105,7 @@ class MainScreen(Screen):
         top_bar.add_widget(settings_btn)
         main_layout.add_widget(top_bar)
         
-        # دائرة التفاعل الملونة
+        # مؤشر التفاعل
         indicator_layout = BoxLayout(orientation='vertical', size_hint_y=0.45)
         self.state_label = Label(
             text="811 Assistant Active\nWaiting for '811'...",
@@ -122,7 +120,7 @@ class MainScreen(Screen):
         indicator_layout.add_widget(self.circle_widget)
         main_layout.add_widget(indicator_layout)
         
-        # سجل التفاعل والنصوص
+        # عرض رد المساعد
         log_layout = BoxLayout(orientation='vertical', size_hint_y=0.3)
         font_arg = FONT_PATH if os.path.exists(FONT_PATH) else "Roboto"
         self.log_label = Label(
@@ -135,7 +133,7 @@ class MainScreen(Screen):
         log_layout.add_widget(self.log_label)
         main_layout.add_widget(log_layout)
         
-        # زر اختبار التفاعل
+        # زر المحاكاة
         self.speak_btn = Button(
             text="Tap to Speak (Test 811)",
             size_hint_y=0.15,
@@ -147,7 +145,6 @@ class MainScreen(Screen):
         self.add_widget(main_layout)
 
     def update_circle(self, *args):
-        """رسم دائرة التفاعل المتغيرة"""
         self.circle_widget.canvas.clear()
         with self.circle_widget.canvas:
             Color(0.1, 0.7, 0.9, 0.8)
@@ -161,7 +158,6 @@ class MainScreen(Screen):
         self.manager.current = 'settings'
 
     def simulate_listening(self, instance):
-        """إرسال سؤال اختباري لـ Gemini"""
         app = App.get_running_app()
         user_query = "هلا 811، شنو الأخبار اليوم؟"
         
@@ -172,7 +168,6 @@ class MainScreen(Screen):
         threading.Thread(target=app.query_gemini, args=(user_query, self.update_ai_response), daemon=True).start()
 
     def update_ai_response(self, response_text):
-        """تحديث نص الاستجابة في الواجهة عبر Main Thread"""
         Clock.schedule_once(lambda dt: self._set_log_text(response_text))
 
     def _set_log_text(self, text):
@@ -181,10 +176,9 @@ class MainScreen(Screen):
         self.log_label.text = fix_ar(f"811: {text}")
 
 # ---------------------------------------------------------
-# الجزء الرابع: شاشة الإعدادات (SettingsScreen)
+# 4. شاشة الإعدادات (SettingsScreen)
 # ---------------------------------------------------------
 class SettingsScreen(Screen):
-    """شاشة التحكم بـ Gemini API ومستوى الصوت والتحكم بالبلوتوث"""
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         
@@ -193,16 +187,14 @@ class SettingsScreen(Screen):
         header = Label(text="Settings", font_size='22sp', bold=True, size_hint_y=0.1)
         layout.add_widget(header)
         
-        # إدخال API Key
         layout.add_widget(Label(text="Gemini API Key:", font_size='14sp', size_hint_y=0.08))
         self.api_input = TextInput(
-            hint_text="Paste your API key here",
+            hint_text="Paste your API key starting with AIzaSy...",
             multiline=False,
             size_hint_y=0.12
         )
         layout.add_widget(self.api_input)
         
-        # التحكم بحساسية الميكروفون
         mic_box = BoxLayout(orientation='vertical', size_hint_y=0.2, spacing=5)
         self.mic_value_label = Label(text="Mic Sensitivity: 70%", font_size='14sp')
         self.mic_slider = Slider(min=10, max=100, value=70)
@@ -211,7 +203,6 @@ class SettingsScreen(Screen):
         mic_box.add_widget(self.mic_slider)
         layout.add_widget(mic_box)
         
-        # تحويل الصوت عبر البلوتوث SCO
         bt_box = BoxLayout(orientation='horizontal', size_hint_y=0.15)
         bt_label = Label(text="Bluetooth SCO Audio:", font_size='14sp')
         self.bt_switch = Switch(active=True)
@@ -219,7 +210,6 @@ class SettingsScreen(Screen):
         bt_box.add_widget(self.bt_switch)
         layout.add_widget(bt_box)
         
-        # زر العودة والحفظ
         back_btn = Button(
             text="Save and Return",
             size_hint_y=0.15,
@@ -240,10 +230,9 @@ class SettingsScreen(Screen):
         self.manager.current = 'main'
 
 # ---------------------------------------------------------
-# الجزء الخامس: الكلاس الرئيسي (VoiceAssistantApp)
+# 5. الاتصال بـ Gemini API
 # ---------------------------------------------------------
 class VoiceAssistantApp(App):
-    """الكلاس الرئيسي الجامع للتطبيق ومعالجة الطلبات الخارجية"""
     api_key = ""
     tts_engine = None
 
@@ -257,7 +246,6 @@ class VoiceAssistantApp(App):
         return sm
 
     def init_tts(self):
-        """تهيئة محرك النطق أندرويد"""
         if platform == 'android':
             try:
                 activity = PythonActivity.mActivity
@@ -267,7 +255,6 @@ class VoiceAssistantApp(App):
                 print(f"TTS Init Error: {e}")
 
     def speak(self, text):
-        """نطق النص الصوتي"""
         if self.tts_engine and platform == 'android':
             try:
                 self.tts_engine.speak(text, TextToSpeech.QUEUE_FLUSH, None)
@@ -275,28 +262,22 @@ class VoiceAssistantApp(App):
                 print(f"TTS Speak Error: {e}")
 
     def query_gemini(self, prompt, callback):
-        """إرسال الاستفسارات لنظام Gemini API بطريقة آمنة ومعالجة حوادث الاتصال"""
         clean_key = self.api_key.strip()
+        
         if not clean_key:
-            reply = "احجي أقدر أجاوبك يا عيني، ادخل الإعدادات والزق الـ API Key"
+            reply = "يرجى لصق المفتاح في شاشة الإعدادات أولاً."
             callback(reply)
             self.speak(reply)
             return
 
-        # العنوان المباشر للاتصال
         url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={clean_key}"
-        
-        headers = {
-            'Content-Type': 'application/json',
-            'X-Goog-Api-Key': clean_key
-        }
-        
+        headers = {'Content-Type': 'application/json'}
         data = {
             "contents": [
                 {
                     "parts": [
                         {
-                            "text": f"أنت مساعد اسمك 811. أجب باختصار شديد وباللهجة العراقية.\nسؤال المستخدم: {prompt}"
+                            "text": f"أنت مساعد اسمك 811. أجب باختصار وبلهجة عراقية لطيفة.\nسؤال المستخدم: {prompt}"
                         }
                     ]
                 }
@@ -308,22 +289,19 @@ class VoiceAssistantApp(App):
             if res.status_code == 200:
                 result = res.json()
                 reply = result['candidates'][0]['content']['parts'][0]['text']
+            elif res.status_code == 401:
+                reply = "خطأ (401): المفتاح غير صالح، تأكد من نسخه بشكل كامل."
             else:
-                reply = f"خطأ في الاتصال ({res.status_code}) تأكد من مفتاح الـ API"
-        except Exception as e:
-            reply = "مشكلة بالإنترنت، تأكد من الاتصال"
+                reply = f"خطأ في الاتصال ({res.status_code})"
+        except Exception:
+            reply = "حدثت مشكلة في شبكة الإنترنت."
         
         callback(reply)
         self.speak(reply)
 
-# ---------------------------------------------------------
-# الجزء السادس: تشغيل التطبيق
-# ---------------------------------------------------------
 if __name__ == '__main__':
     try:
         VoiceAssistantApp().run()
     except Exception as e:
-        print("Application Crash:")
         print("Error details:", e)
         traceback.print_exc()
-            

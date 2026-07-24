@@ -1,6 +1,6 @@
 # =========================================================
 # مشروع المساعد الشخصي الذكي (VoiceAssistant_811)
-# ملف main.py - دعم مفاتيح Google AI Studio الجديدة (AQ.xxx)
+# ملف main.py - التحديث للعمل مع Groq API (Llama 3)
 # =========================================================
 
 import os
@@ -23,12 +23,11 @@ from kivy.uix.widget import Widget
 from kivy.uix.scrollview import ScrollView
 from kivy.graphics import Color, Ellipse
 
-# ترك المفتاح الافتراضي فارغاً لحماية مستودع GitHub
 DEFAULT_API_KEY = ""
 FONT_PATH = "arabic_font.ttf"
 
 def download_arabic_font():
-    """تحميل خط عربي لتنسيق النصوص داخل التطبيق"""
+    """تحميل خط عربي لتنسيق الواجهة"""
     if not os.path.exists(FONT_PATH):
         try:
             url = "https://raw.githubusercontent.com/google/fonts/main/ofl/amiri/Amiri-Regular.ttf"
@@ -47,7 +46,7 @@ except ImportError:
     HAS_ARABIC = False
 
 def fix_ar(text):
-    """ضبط اتجاه وتشبيك الحروف العربية"""
+    """ضبط النصوص العربية"""
     if not text:
         return ""
     if HAS_ARABIC:
@@ -82,7 +81,7 @@ class MainScreen(Screen):
         top_bar.add_widget(settings_btn)
         main_layout.add_widget(top_bar)
         
-        # مؤشر حالة المساعد
+        # المؤشر
         indicator_layout = BoxLayout(orientation='vertical', size_hint_y=0.45)
         self.state_label = Label(text="811 Assistant Active\nWaiting for '811'...", font_size='18sp', halign='center', bold=True)
         self.circle_widget = Widget(size_hint=(1, 1))
@@ -91,14 +90,14 @@ class MainScreen(Screen):
         indicator_layout.add_widget(self.circle_widget)
         main_layout.add_widget(indicator_layout)
         
-        # عرض الردود
+        # الردود
         log_layout = BoxLayout(orientation='vertical', size_hint_y=0.3)
         font_arg = FONT_PATH if os.path.exists(FONT_PATH) else "Roboto"
         self.log_label = Label(text=fix_ar("...أنت: «811» بانتظار الأوامر الصوتية"), font_size='15sp', font_name=font_arg, halign='center', color=(0.9, 0.9, 0.9, 1))
         log_layout.add_widget(self.log_label)
         main_layout.add_widget(log_layout)
         
-        # زر التحديث والتجربة
+        # زر التحدث
         self.speak_btn = Button(text="Tap to Speak (Test 811)", size_hint_y=0.15, background_color=(0.1, 0.7, 0.4, 1))
         self.speak_btn.bind(on_release=self.simulate_listening)
         main_layout.add_widget(self.speak_btn)
@@ -130,7 +129,7 @@ class MainScreen(Screen):
         self.log_label.font_name = font_arg
         self.log_label.text = fix_ar(f"أنت: {user_query}\n\n811: جاري التفكير...")
         
-        threading.Thread(target=app.query_gemini, args=(user_query, self.update_ai_response, False), daemon=True).start()
+        threading.Thread(target=app.query_ai, args=(user_query, self.update_ai_response, False), daemon=True).start()
 
     def update_ai_response(self, response_text):
         Clock.schedule_once(lambda dt: self._set_log_text(response_text))
@@ -148,7 +147,7 @@ class AppBuilderScreen(Screen):
         super().__init__(**kwargs)
         
         layout = BoxLayout(orientation='vertical', padding=15, spacing=10)
-        layout.add_widget(Label(text="AI App Builder (Gemini)", font_size='20sp', bold=True, size_hint_y=0.08))
+        layout.add_widget(Label(text="AI App Builder (Groq Engine)", font_size='20sp', bold=True, size_hint_y=0.08))
         
         self.desc_input = TextInput(hint_text="صف تطبيقك هنا...", multiline=True, size_hint_y=0.2)
         layout.add_widget(self.desc_input)
@@ -176,11 +175,11 @@ class AppBuilderScreen(Screen):
             self.code_output.text = "الرجاء كتابة وصف للتطبيق أولاً."
             return
         
-        self.code_output.text = "جاري توليد الكود البرمجي بواسطة Gemini..."
+        self.code_output.text = "جاري توليد الكود البرمجي بذكاء Groq..."
         app = App.get_running_app()
         
         builder_prompt = f"قم بكتابة كود Python كامل وموضح بالتفصيل لبناء التطبيق التالي: {prompt_text}"
-        threading.Thread(target=app.query_gemini, args=(builder_prompt, self.show_generated_code, True), daemon=True).start()
+        threading.Thread(target=app.query_ai, args=(builder_prompt, self.show_generated_code, True), daemon=True).start()
 
     def show_generated_code(self, result_text):
         Clock.schedule_once(lambda dt: self._set_code_text(result_text))
@@ -205,19 +204,13 @@ class SettingsScreen(Screen):
         
         layout.add_widget(Label(text="Settings", font_size='20sp', bold=True, size_hint_y=0.1))
         
-        layout.add_widget(Label(text="Gemini API Key (Paste your AQ.xxx key here):", font_size='13sp', size_hint_y=0.06))
-        self.api_input = TextInput(hint_text="Paste your API key here", multiline=False, size_hint_y=0.1)
+        layout.add_widget(Label(text="Groq API Key (Paste gsk_... key here):", font_size='13sp', size_hint_y=0.06))
+        self.api_input = TextInput(hint_text="Paste gsk_... key here", multiline=False, size_hint_y=0.1)
         layout.add_widget(self.api_input)
         
-        search_box = BoxLayout(orientation='horizontal', size_hint_y=0.12)
-        search_box.add_widget(Label(text="Google Search (Live Info):", font_size='13sp'))
-        self.search_switch = Switch(active=True)
-        search_box.add_widget(self.search_switch)
-        layout.add_widget(search_box)
-        
         temp_box = BoxLayout(orientation='vertical', size_hint_y=0.18, spacing=2)
-        self.temp_label = Label(text="Temperature (Creativity): 1.0", font_size='13sp')
-        self.temp_slider = Slider(min=0.0, max=2.0, value=1.0, step=0.1)
+        self.temp_label = Label(text="Temperature (Creativity): 0.7", font_size='13sp')
+        self.temp_slider = Slider(min=0.0, max=1.0, value=0.7, step=0.1)
         self.temp_slider.bind(value=self.on_temp_change)
         temp_box.add_widget(self.temp_label)
         temp_box.add_widget(self.temp_slider)
@@ -232,7 +225,6 @@ class SettingsScreen(Screen):
     def on_pre_enter(self, *args):
         app = App.get_running_app()
         self.api_input.text = app.api_key
-        self.search_switch.active = app.use_google_search
         self.temp_slider.value = app.temperature
         self.temp_label.text = f"Temperature (Creativity): {round(app.temperature, 1)}"
 
@@ -243,19 +235,17 @@ class SettingsScreen(Screen):
         app = App.get_running_app()
         app.save_settings(
             key_text=self.api_input.text.strip(),
-            use_search=self.search_switch.active,
             temp=self.temp_slider.value
         )
         self.manager.transition = SlideTransition(direction='right')
         self.manager.current = 'main'
 
 # ---------------------------------------------------------
-# 4. التطبيق الرئيسي وإدارة الاتصال
+# 4. التطبيق الرئيسي ومعالجة Groq API
 # ---------------------------------------------------------
 class VoiceAssistantApp(App):
     api_key = DEFAULT_API_KEY
-    use_google_search = True
-    temperature = 1.0
+    temperature = 0.7
     store = None
 
     def build(self):
@@ -265,8 +255,7 @@ class VoiceAssistantApp(App):
             config = self.store.get('config')
             saved_key = config.get('api_key', '').strip()
             self.api_key = saved_key if saved_key else DEFAULT_API_KEY
-            self.use_google_search = config.get('use_search', True)
-            self.temperature = config.get('temperature', 1.0)
+            self.temperature = config.get('temperature', 0.7)
         else:
             self.api_key = DEFAULT_API_KEY
 
@@ -278,57 +267,50 @@ class VoiceAssistantApp(App):
         sm.add_widget(AppBuilderScreen(name='builder'))
         return sm
 
-    def save_settings(self, key_text, use_search, temp):
+    def save_settings(self, key_text, temp):
         self.api_key = key_text if key_text else DEFAULT_API_KEY
-        self.use_google_search = use_search
         self.temperature = temp
         
         self.store.put('config', 
                        api_key=self.api_key, 
-                       use_search=self.use_google_search, 
                        temperature=self.temperature)
 
-    def query_gemini(self, prompt, callback, is_builder=False):
+    def query_ai(self, prompt, callback, is_builder=False):
         """
-        تقبل هذه الدالة المفتاح بشكل مباشر وتام (مهما كانت بدايته AQ. أو غيرها)
+        دالة إرسال الطلب إلى Groq API السريع والمجاني
         """
         clean_key = self.api_key.strip()
         
         if not clean_key:
-            reply = "الرجاء الانتقال للإعدادات وإلصاق مفتاح الـ API الخاص بك."
+            reply = "الرجاء الانتقال للإعدادات وإلصاق مفتاح Groq الخاص بك (يبدأ بـ gsk_)."
             callback(reply)
             return
 
-        # استخدام الرابط المباشر وإرفاق المفتاح كما هو
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={clean_key}"
-        headers = {'Content-Type': 'application/json'}
+        # رابط Groq API المباشر
+        url = "https://api.groq.com/openai/v1/chat/completions"
+        headers = {
+            'Authorization': f'Bearer {clean_key}',
+            'Content-Type': 'application/json'
+        }
         
         sys_instruction = "أنت خبير برمجي محترف. قم بتوليد كود كامل وموثق بالتفصيل." if is_builder else "أنت مساعد ذكي اسمك 811. أجب باختصار ووضوح وبلهجة عربية لطيفة."
 
         data = {
-            "system_instruction": {
-                "parts": [{"text": sys_instruction}]
-            },
-            "contents": [
-                {
-                    "parts": [{"text": prompt}]
-                }
+            "model": "llama-3.3-70b-versatile",
+            "messages": [
+                {"role": "system", "content": sys_instruction},
+                {"role": "user", "content": prompt}
             ],
-            "generationConfig": {
-                "temperature": self.temperature
-            }
+            "temperature": self.temperature
         }
-        
-        if self.use_google_search and not is_builder:
-            data["tools"] = [{"google_search": {}}]
         
         try:
             res = requests.post(url, json=data, headers=headers, timeout=25)
             if res.status_code == 200:
                 result = res.json()
-                reply = result['candidates'][0]['content']['parts'][0]['text']
+                reply = result['choices'][0]['message']['content']
             else:
-                reply = f"خطأ في الاتصال بالخدمة ({res.status_code}). تأكد من إدخال المفتاح بشكل صحيح."
+                reply = f"خطأ من الخدمة ({res.status_code}): تأكد من أن مفتاح gsk_ صحيح."
         except Exception:
             reply = "حدث خطأ في الاتصال بالشبكة."
 

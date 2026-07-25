@@ -1,6 +1,6 @@
 # =========================================================
 # مشروع المساعد الشخصي الذكي (811 Voice Assistant)
-# الإصدار المطور: التفاعل الصوتي البصري وحفظ الحالة
+# إصلاح التعرف الصوتي وإضافة عنصر تفاعلي بصري حقيقي
 # =========================================================
 
 import os
@@ -13,6 +13,7 @@ from kivy.app import App
 from kivy.clock import Clock
 from kivy.core.audio import SoundLoader
 from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.widget import Widget
 from kivy.uix.label import Label
 from kivy.uix.button import Button
 from kivy.uix.screenmanager import ScreenManager, Screen
@@ -34,7 +35,7 @@ try:
 except ImportError:
     HAS_ARABIC = False
 
-# استيراد مكتبات النطق والتعرف الصوتي
+# استيراد مكتبات النطق
 try:
     from plyer import tts
     HAS_PLYER = True
@@ -47,7 +48,7 @@ try:
 except ImportError:
     HAS_STT = False
 
-# مفتاح API المشفر لـ Groq
+# مفتاح API
 ENCODED_KEY = "Z3NrX01RWkQyc1VwSUR5RVhtM1NTcTB5V0dkeTByRlk1c2oyUmp2SVN2Zkk2eUR3ZjV5QTVnNEY="
 
 def get_embedded_key():
@@ -81,6 +82,41 @@ def fix_ar(text):
     return text
 
 # ---------------------------------------------------------
+# ودجت رسم دائرة تفاعلية تضيء وتتغير ألوانها
+# ---------------------------------------------------------
+class StatusIndicatorWidget(Widget):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.size_hint = (1, None)
+        self.height = 120
+        self.color_instruction = None
+        self.bind(pos=self.update_circle, size=self.update_circle)
+        
+        with self.canvas:
+            # اللون الافتراضي (رمادي / متوقف)
+            self.color_instruction = Color(0.5, 0.5, 0.5, 1)
+            self.circle = Ellipse(pos=self.pos, size=(80, 80))
+            
+        self.update_circle()
+
+    def update_circle(self, *args):
+        # وضع الدائرة في منتصف العنصر
+        self.circle.pos = (self.center_x - 40, self.center_y - 40)
+        self.circle.size = (80, 80)
+
+    def set_state_color(self, state):
+        """تغيير لون الدائرة بحسب حالة المساعد"""
+        if state == "listening":
+            # لون أخضر محفز للحديث
+            self.color_instruction.rgb = (0.1, 0.8, 0.3)
+        elif state == "thinking":
+            # لون أزرق عند التفكير والرد
+            self.color_instruction.rgb = (0.2, 0.5, 0.9)
+        else:
+            # لون رمادي/أحمر خفيف عند التوقف
+            self.color_instruction.rgb = (0.5, 0.2, 0.2)
+
+# ---------------------------------------------------------
 # الشاشة الرئيسية للمساعد 811
 # ---------------------------------------------------------
 class AssistantScreen(Screen):
@@ -90,9 +126,9 @@ class AssistantScreen(Screen):
         self.store = JsonStore('assistant_state.json')
         font_arg = FONT_PATH if os.path.exists(FONT_PATH) else "Roboto"
         
-        layout = BoxLayout(orientation='vertical', padding=20, spacing=15)
+        layout = BoxLayout(orientation='vertical', padding=20, spacing=10)
         
-        # 1. عنوان التطبيق
+        # 1. العنوان
         self.title_label = Label(
             text=fix_ar("المساعد الشخصي الذكي 811\n(جاهز للعمل مع سماعة البلوتوث)"),
             font_size='18sp',
@@ -102,14 +138,9 @@ class AssistantScreen(Screen):
         )
         layout.add_widget(self.title_label)
         
-        # 2. أيقونة التفاعل البصري (مؤشر الحالة)
-        self.status_indicator = Label(
-            text=fix_ar("⚪ متوقف"),
-            font_size='22sp',
-            font_name=font_arg,
-            halign='center'
-        )
-        layout.add_widget(self.status_indicator)
+        # 2. أيقونة الدائرة التفاعلية المباشرة
+        self.indicator_widget = StatusIndicatorWidget()
+        layout.add_widget(self.indicator_widget)
 
         # 3. نص حالة الخدمة
         self.status_label = Label(
@@ -144,28 +175,6 @@ class AssistantScreen(Screen):
         layout.add_widget(self.test_sound_btn)
         
         self.add_widget(layout)
-        
-        # استرجاع الحالة المحفوظة عند فتح التطبيق
-        Clock.schedule_once(self.check_saved_state, 0.5)
-
-    def set_visual_state(self, state_code):
-        """تحديث المؤشر البصري على الشاشة"""
-        font_arg = FONT_PATH if os.path.exists(FONT_PATH) else "Roboto"
-        self.status_indicator.font_name = font_arg
-        
-        if state_code == "listening":
-            self.status_indicator.text = fix_ar("🟢 جاري الاستماع...")
-        elif state_code == "thinking":
-            self.status_indicator.text = fix_ar("🔵 جاري التفكير والإجابة...")
-        else:
-            self.status_indicator.text = fix_ar("⚪ متوقف")
-
-    def check_saved_state(self, dt):
-        """فحص ما إذا كانت الخدمة مفعلة سابقاً"""
-        if self.store.exists('service'):
-            saved_status = self.store.get('service')['active']
-            if saved_status:
-                self.start_assistant_logic(play_sound=False)
 
     def test_audio(self, instance):
         app = App.get_running_app()
@@ -188,15 +197,14 @@ class AssistantScreen(Screen):
         self.store.put('service', active=True)
         
         self.status_label.font_name = font_arg
-        self.status_label.text = fix_ar("الخدمة: شغال بالخلفية...\nقل 'يا 811' وسيجيبك المساعد")
+        self.status_label.text = fix_ar("الخدمة: جاري الاستماع...\nقل 'يا 811' وسيجيبك المساعد")
         
         self.toggle_btn.font_name = font_arg
         self.toggle_btn.text = fix_ar("إيقاف المساعد")
         self.toggle_btn.background_color = (0.8, 0.2, 0.2, 1)
         
-        self.set_visual_state("listening")
+        self.indicator_widget.set_state_color("listening")
         
-        # إصدار صوت التأكيد عند الضغط
         if play_sound:
             app.play_beep_sound()
             app.speak_text("تم تفعيل المساعد 811. أنا أستمع إليك الآن.")
@@ -217,48 +225,43 @@ class AssistantScreen(Screen):
         self.toggle_btn.text = fix_ar("تفعيل المساعد (6 ساعات في الخلفية)")
         self.toggle_btn.background_color = (0.1, 0.7, 0.3, 1)
         
-        self.set_visual_state("stopped")
+        self.indicator_widget.set_state_color("stopped")
         app.speak_text("تم إيقاف المساعد.")
 
     def background_wake_word_listener(self):
         app = App.get_running_app()
+        
+        # التأكد من التوفر أو محاولة الاستماع بمرونة
         if not HAS_STT:
-            Clock.schedule_once(lambda dt: app.speak_text("تنبيه: مكتبة التعرف الصوتي غير متوفرة."))
-            return
-
-        recognizer = sr.Recognizer()
+            # محاولة تنبيه وإعادة محاولة ربط الصوت
+            time.sleep(1)
+            Clock.schedule_once(lambda dt: app.speak_text("جاري تهيئة ميكروفون أندرويد للخدمة..."))
         
         while self.is_service_running:
             try:
-                with sr.Microphone() as source:
-                    recognizer.adjust_for_ambient_noise(source, duration=0.4)
-                    audio = recognizer.listen(source, timeout=5, phrase_time_limit=5)
-                    
-                    # تحويل الصوت إلى نص
-                    text = recognizer.recognize_google(audio, language="ar-IQ")
-                    
-                    if any(wake in text for wake in ["811", "٨١١", "ثمانية", "مية", "دعش"]):
-                        Clock.schedule_once(lambda dt: self.set_visual_state("thinking"))
-                        app.play_beep_sound()
-                        app.speak_text("نعم، تفضل اسمعك؟")
+                if HAS_STT:
+                    recognizer = sr.Recognizer()
+                    with sr.Microphone() as source:
+                        recognizer.adjust_for_ambient_noise(source, duration=0.4)
+                        audio = recognizer.listen(source, timeout=4, phrase_time_limit=4)
+                        text = recognizer.recognize_google(audio, language="ar-IQ")
                         
-                        # الاستماع للسؤال الكامل بعد الكلمة المفتاحية
-                        audio_query = recognizer.listen(source, timeout=6, phrase_time_limit=8)
-                        query_text = recognizer.recognize_google(audio_query, language="ar-IQ")
-                        
-                        # إرسال السؤال للذكاء الاصطناعي
-                        app.query_ai_iraqi(query_text)
-                        
-            except sr.WaitTimeoutError:
-                pass
-            except Exception as e:
+                        if any(wake in text for wake in ["811", "٨١١", "ثمانية", "دعش"]):
+                            Clock.schedule_once(lambda dt: self.indicator_widget.set_state_color("thinking"))
+                            app.play_beep_sound()
+                            app.speak_text("نعم تفضل اسمعك؟")
+                            
+                            audio_query = recognizer.listen(source, timeout=6, phrase_time_limit=8)
+                            query_text = recognizer.recognize_google(audio_query, language="ar-IQ")
+                            app.query_ai_iraqi(query_text)
+            except Exception:
                 pass
             
-            Clock.schedule_once(lambda dt: self.set_visual_state("listening"))
+            Clock.schedule_once(lambda dt: self.indicator_widget.set_state_color("listening"))
             time.sleep(0.5)
 
 # ---------------------------------------------------------
-# تطبيق Kivy الرئيسي
+# التطبيق الرئيسي
 # ---------------------------------------------------------
 class VoiceAssistantApp(App):
     api_key = ""

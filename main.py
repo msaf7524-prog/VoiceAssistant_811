@@ -1,6 +1,6 @@
 # =========================================================
 # مشروع المساعد الشخصي الذكي (811 Voice Assistant)
-# حل مشكلة النصوص العربية والخطوط (Tofu Blocks Fix)
+# حل مشكلة الأذونات والاستجابة الصوتية على أندرويد
 # =========================================================
 
 import os
@@ -17,6 +17,13 @@ from kivy.uix.label import Label
 from kivy.uix.button import Button
 from kivy.uix.screenmanager import ScreenManager, Screen
 
+# دعم أذونات أندرويد المباشرة
+try:
+    from android.permissions import request_permissions, Permission
+    HAS_ANDROID_PERM = True
+except ImportError:
+    HAS_ANDROID_PERM = False
+
 # دعم المكتبات العربية
 try:
     import arabic_reshaper
@@ -25,9 +32,9 @@ try:
 except ImportError:
     HAS_ARABIC = False
 
-# استيراد مكتبات النطق والاستماع
+# استيراد مكتبات النطق
 try:
-    from plyer import tts, notification
+    from plyer import tts
     HAS_PLYER = True
 except ImportError:
     HAS_PLYER = False
@@ -38,7 +45,6 @@ try:
 except ImportError:
     HAS_STT = False
 
-# المفتاح المدمج لـ Groq API
 ENCODED_KEY = "Z3NrX01RWkQyc1VwSUR5RVhtM1NTcTB5V0dkeTByRlk1c2oyUmp2SVN2Zkk2eUR3ZjV5QTVnNEY="
 
 def get_embedded_key():
@@ -50,7 +56,6 @@ def get_embedded_key():
 FONT_PATH = "arabic_font.ttf"
 
 def download_font_if_missing():
-    """تنزيل خط عربي لتجنب ظهور المربعات الفارغة"""
     if not os.path.exists(FONT_PATH):
         try:
             url = "https://raw.githubusercontent.com/google/fonts/main/ofl/amiri/Amiri-Regular.ttf"
@@ -62,7 +67,6 @@ def download_font_if_missing():
             print("Font Download Error:", e)
 
 def fix_ar(text):
-    """إعادة تشكيل النص العربي للعرض على الشاشة بدقة"""
     if not text:
         return ""
     if HAS_ARABIC:
@@ -96,7 +100,7 @@ class AssistantScreen(Screen):
         
         # حالة الخدمة
         self.status_label = Label(
-            text=fix_ar("الخدمة: متوقفة\nاضغط تفعيل للعمل لمدة 6 ساعات"),
+            text=fix_ar("الخدمة: متوقفة\nاضغط تفعيل للعمل"),
             font_size='14sp',
             font_name=font_arg,
             color=(0.7, 0.7, 0.7, 1),
@@ -114,30 +118,44 @@ class AssistantScreen(Screen):
         )
         self.toggle_btn.bind(on_release=self.toggle_service)
         layout.add_widget(self.toggle_btn)
+
+        # زر تجربة الصوت المباشر
+        self.test_sound_btn = Button(
+            text=fix_ar("اختبار الصوت المباشر 🔊"),
+            font_size='14sp',
+            font_name=font_arg,
+            size_hint_y=0.15,
+            background_color=(0.2, 0.4, 0.8, 1)
+        )
+        self.test_sound_btn.bind(on_release=self.test_audio)
+        layout.add_widget(self.test_sound_btn)
         
         self.add_widget(layout)
 
+    def test_audio(self, instance):
+        app = App.get_running_app()
+        app.speak_text("هلا بيك! الصوت يعمل بشكل ممتاز في المساعد 811.")
+
     def toggle_service(self, instance):
         font_arg = FONT_PATH if os.path.exists(FONT_PATH) else "Roboto"
+        
+        # طلب الأذونات على أندرويد أولاً
+        if HAS_ANDROID_PERM:
+            request_permissions([
+                Permission.RECORD_AUDIO,
+                Permission.BLUETOOTH,
+                Permission.BLUETOOTH_CONNECT
+            ])
+
         if not self.is_service_running:
             self.is_service_running = True
             
-            # تحديث النصوص مع تشكيل الخط العربي
             self.status_label.font_name = font_arg
-            self.status_label.text = fix_ar("الخدمة: شغال بالخلفية...\nقل 'يا 811' وسيجيبك المساعد")
+            self.status_label.text = fix_ar("الخدمة: جاري الاستماع...\nقل 'يا 811' وسيجيبك المساعد")
             
             self.toggle_btn.font_name = font_arg
             self.toggle_btn.text = fix_ar("إيقاف المساعد")
             self.toggle_btn.background_color = (0.8, 0.2, 0.2, 1)
-            
-            if HAS_PLYER:
-                try:
-                    notification.notify(
-                        title="المساعد 811 نشط",
-                        message="المساعد يستمع للكلمة المفتاحية 'يا 811' عبر البلوتوث..."
-                    )
-                except Exception as e:
-                    print("Notification error:", e)
             
             threading.Thread(target=self.background_wake_word_listener, daemon=True).start()
         else:
@@ -151,37 +169,24 @@ class AssistantScreen(Screen):
 
     def background_wake_word_listener(self):
         app = App.get_running_app()
-        recognizer = sr.Recognizer() if HAS_STT else None
-        end_time = time.time() + (6 * 3600)
+        if not HAS_STT:
+            return
+
+        recognizer = sr.Recognizer()
         
-        while self.is_service_running and time.time() < end_time:
-            if not HAS_STT:
-                time.sleep(5)
-                continue
-                
+        while self.is_service_running:
             try:
                 with sr.Microphone() as source:
-                    recognizer.adjust_for_ambient_noise(source, duration=0.3)
-                    audio = recognizer.listen(source, timeout=3, phrase_time_limit=3)
+                    recognizer.adjust_for_ambient_noise(source, duration=0.5)
+                    audio = recognizer.listen(source, timeout=4, phrase_time_limit=4)
                     text = recognizer.recognize_google(audio, language="ar-IQ")
                     
-                    if any(wake in text for wake in ["811", "٨١١", "ثمانية", "مية", "دعش"]):
+                    if any(wake in text for wake in ["811", "٨١١", "ثمانية", "مية"]):
                         app.play_beep_sound()
-                        self.listen_and_process_query(recognizer, source)
-                        
+                        app.speak_text("نعم اسمعك، تفضل؟")
             except Exception:
                 pass
-                
             time.sleep(0.5)
-
-    def listen_and_process_query(self, recognizer, source):
-        app = App.get_running_app()
-        try:
-            audio = recognizer.listen(source, timeout=6, phrase_time_limit=10)
-            user_speech = recognizer.recognize_google(audio, language="ar-IQ")
-            app.query_ai_iraqi(user_speech)
-        except Exception:
-            app.speak_text("عذراً، ما سمعتك زين. اعد سؤالك.")
 
 # ---------------------------------------------------------
 # تطبيق Kivy الرئيسي
@@ -192,6 +197,11 @@ class VoiceAssistantApp(App):
     def build(self):
         download_font_if_missing()
         self.api_key = get_embedded_key()
+        
+        # طلب الأذن فور فتح التطبيق
+        if HAS_ANDROID_PERM:
+            request_permissions([Permission.RECORD_AUDIO, Permission.BLUETOOTH_CONNECT])
+            
         sm = ScreenManager()
         sm.add_widget(AssistantScreen(name='main'))
         return sm
@@ -212,41 +222,6 @@ class VoiceAssistantApp(App):
                 except Exception as e:
                     print("TTS error:", e)
         threading.Thread(target=_speak, daemon=True).start()
-
-    def query_ai_iraqi(self, prompt_text):
-        def _request():
-            url = "https://api.groq.com/openai/v1/chat/completions"
-            headers = {
-                'Authorization': f'Bearer {self.api_key}',
-                'Content-Type': 'application/json'
-            }
-            
-            system_prompt = (
-                "أنت مساعد شخصي ذكي مذكر اسمك 811. "
-                "تحدث بلهجة عراقية عامية محببة وبسيطة جداً. "
-                "أجوبتك يجب أن تكون قصيرة جداً ومباشرة ومناسبة للمحادثة الصوتية عبر البلوتوث."
-            )
-            
-            data = {
-                "model": "llama-3.3-70b-versatile",
-                "messages": [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": prompt_text}
-                ],
-                "temperature": 0.6
-            }
-            
-            try:
-                res = requests.post(url, json=data, headers=headers, timeout=15)
-                if res.status_code == 200:
-                    reply = res.json()['choices'][0]['message']['content']
-                    self.speak_text(reply)
-                else:
-                    self.speak_text("صار اكو خلل بالسيرفر، جرب مرة ثانية.")
-            except Exception:
-                self.speak_text("تأكد من الاتصال بالإنترنت.")
-
-        threading.Thread(target=_request, daemon=True).start()
 
 if __name__ == '__main__':
     VoiceAssistantApp().run()
